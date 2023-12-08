@@ -3,7 +3,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 @SuppressWarnings("unused")
-public class Puzzle3 {
+public class Puzzle4 {
 
     public int solve() throws IOException{
         var lines = Files.readAllLines(Paths.get("./data/day2.txt"));
@@ -13,7 +13,22 @@ public class Puzzle3 {
     private int score(String game) {
         String[] moves = game.split(" ");
         String theirs = moves[0].trim();
-        String mine = translate(moves[1]);
+        String mine = switch (moves[1].trim()) {
+            case "X" -> switch (theirs) {
+                case "A" -> "C";
+                case "B" -> "A";
+                case "C" -> "B";
+                default -> throw new RuntimeException("bad move");
+            };
+            case "Y" -> theirs;
+            case "Z" -> switch (theirs) {
+                case "A" -> "B";
+                case "B" -> "C";
+                case "C" -> "A";
+                default -> throw new RuntimeException("bad move");
+            };
+            default -> throw new RuntimeException("bad move");
+        };
 
         int score = switch(mine) {
             case "A" -> 1;
@@ -31,15 +46,6 @@ public class Puzzle3 {
         }
 
         return score;
-    }
-
-    private String translate(String s) {
-        return switch(s.trim()) {
-            case "X" -> "A";
-            case "Y" -> "B";
-            case "Z" -> "C";
-            default -> throw new RuntimeException("bad input");
-        };
     }
 
 }
