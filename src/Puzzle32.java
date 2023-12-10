@@ -1,15 +1,15 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static java.lang.Math.max;
 
 @SuppressWarnings("unused")
 public class Puzzle32 {
@@ -74,8 +74,7 @@ public class Puzzle32 {
             return cache.get(state);
         }
 
-        var options = new ArrayList<Long>();
-        int lowMin = Math.min(state.min1(), state.min2());
+        long best = 0;
 
         if (state.min1() > 0) {
             int bitmask = 1 << state.loc1();
@@ -83,10 +82,10 @@ public class Puzzle32 {
 
             if ((state.valves() & bitmask) == 0) {
                 var newState = new State(state.min1() - 1, state.loc1(), state.min2(), state.loc2(), state.valves() | bitmask, state.flowRate() + valve.flowRate());
-                options.add(maxFlow(cache, newState, numValves, distance, valves) + ((lowMin == state.min2()) ? state.flowRate() : 0));
+                best = max(maxFlow(cache, newState, numValves, distance, valves) + ((state.min1() <= state.min2()) ? state.flowRate() : 0), best);
             } else {
                 var newState = new State(state.min1() - 1, state.loc1(), state.min2(), state.loc2(), state.valves(), state.flowRate());
-                options.add(maxFlow(cache, newState, numValves, distance, valves) + ((lowMin == state.min2()) ? state.flowRate() : 0));
+                best = max(maxFlow(cache, newState, numValves, distance, valves) + ((state.min1() <= state.min2()) ? state.flowRate() : 0), best);
             }
 
             for (int i = 0; i < numValves; ++i) {
@@ -94,10 +93,10 @@ public class Puzzle32 {
                     int time = distance[state.loc1()][i];
                     if (state.min1() - time > 0) {
                         var newState = new State(state.min1() - time, i, state.min2(), state.loc2(), state.valves(), state.flowRate());
-                        if (lowMin == state.min1()) {
-                            time = Math.max(time - state.min2() + state.min1(), 0);
+                        if (state.min1() > state.min2()) {
+                            time = max(time - state.min1() + state.min2(), 0);
                         }
-                        options.add(maxFlow(cache, newState, numValves, distance, valves) + state.flowRate() * (long) time);
+                        best = max(maxFlow(cache, newState, numValves, distance, valves) + state.flowRate() * (long) time, best);
                     }
                 }
             }
@@ -109,10 +108,10 @@ public class Puzzle32 {
 
             if ((state.valves() & bitmask) == 0) {
                 var newState = new State(state.min1(), state.loc1(), state.min2() - 1, state.loc2(), state.valves() | bitmask, state.flowRate() + valve.flowRate());
-                options.add(maxFlow(cache, newState, numValves, distance, valves) + ((lowMin == state.min1()) ? state.flowRate() : 0));
+                best = max(maxFlow(cache, newState, numValves, distance, valves) + ((state.min2() <= state.min1()) ? state.flowRate() : 0), best);
             } else {
                 var newState = new State(state.min1(), state.loc1(), state.min2() - 1, state.loc2(), state.valves(), state.flowRate());
-                options.add(maxFlow(cache, newState, numValves, distance, valves) + ((lowMin == state.min1()) ? state.flowRate() : 0));
+                best = max(maxFlow(cache, newState, numValves, distance, valves) + ((state.min2() <= state.min1()) ? state.flowRate() : 0), best);
             }
 
             for (int i = 0; i < numValves; ++i) {
@@ -120,22 +119,25 @@ public class Puzzle32 {
                     int time = distance[state.loc2()][i];
                     if (state.min2() - time > 0) {
                         var newState = new State(state.min1(), state.loc1(), state.min2() - time, i, state.valves(), state.flowRate());
-                        if (lowMin == state.min2()) {
-                            time = Math.max(time - state.min1() + state.min2(), 0);
+                        if (state.min2() > state.min1()) {
+                            time = max(time - state.min2() + state.min1(), 0);
                         }
-                        options.add(maxFlow(cache, newState, numValves, distance, valves) + state.flowRate() * (long) time);
+                        best = max(maxFlow(cache, newState, numValves, distance, valves) + state.flowRate() * (long) time, best);
                     }
                 }
             }
         }
 
-        var best = options.stream().max(Comparator.comparingLong(n -> n)).orElse(0L);
         cache.put(state, best);
+        cache.put(state.flip(), best);
 
         return best;
     }
 
     record State(int min1, int loc1, int min2, int loc2, int valves, int flowRate) {
+        State flip() {
+            return new State(min2, loc2, min1, loc1, valves, flowRate);
+        }
     }
 
     record Valve(int id, String label, int flowRate, Set<String> reachable) {
